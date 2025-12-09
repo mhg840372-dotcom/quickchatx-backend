@@ -1,0 +1,157 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "📊 QuickChatX v4.5.1 — Redis Metrics Dashboard (Prometheus)",
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": null,
+  "iteration": 1731000000000,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Redis Status",
+      "id": 1,
+      "datasource": { "type": "prometheus", "uid": "PROM_DS" },
+      "targets": [
+        {
+          "expr": "redis_up",
+          "legendFormat": "Redis UP"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "horizontal"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": 0 },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "unit": "bool"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Redis Latency (ms)",
+      "id": 2,
+      "datasource": { "type": "prometheus", "uid": "PROM_DS" },
+      "targets": [
+        {
+          "expr": "redis_latency_ms",
+          "legendFormat": "Latency"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 100 },
+              { "color": "red", "value": 300 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 6, "y": 0 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Redis Memory Usage (Bytes)",
+      "id": 3,
+      "datasource": { "type": "prometheus", "uid": "PROM_DS" },
+      "targets": [
+        {
+          "expr": "redis_memory_used_bytes",
+          "legendFormat": "Memory Used"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 50000000 },
+              { "color": "red", "value": 100000000 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Redis Reconnect Attempts",
+      "id": 4,
+      "datasource": { "type": "prometheus", "uid": "PROM_DS" },
+      "targets": [
+        {
+          "expr": "increase(redis_reconnect_attempts_total[5m])",
+          "legendFormat": "Reconnects"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 3 },
+              { "color": "red", "value": 10 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 37,
+  "style": "dark",
+  "tags": ["QuickChatX", "Redis", "Prometheus"],
+  "templating": {
+    "list": [
+      {
+        "type": "datasource",
+        "name": "PROM_DS",
+        "label": "Prometheus",
+        "query": "prometheus",
+        "refresh": 1
+      }
+    ]
+  },
+  "time": { "from": "now-15m", "to": "now" },
+  "timezone": "",
+  "title": "QuickChatX — Redis Metrics",
+  "uid": "quickchatx-redis",
+  "version": 1
+}

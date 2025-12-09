@@ -1,0 +1,178 @@
+import fetch from "node-fetch";
+import News from "../domain/News.js";
+
+// 🔑 Claves API
+const GNEWS_API_KEY = "076844a3812279f3fa0733f774d97c3d";
+const DEEPL_API_KEY = "76cd33c4-a7ed-4c76-875b-4b293ec191a2";
+const MEDIASTACK_API_KEY = "a1cbb600b8430aa9b6ce21ef8c8df400";
+const APITUBE_API_KEY = "api_live_SLNZjf7rFZJXMYuaFB5KJ1JBOB4KsovITrMbhPmzaizXC0N";
+const SERP_API_KEY = "f0449f93cdbbc9ff6bf1cb32421cc827cc1fabc7fdf6f86df2335fa3ee9ca345";
+
+// ------------------- Utilidades -------------------
+
+// Detecta si el texto está en inglés
+const isEnglish = (text) => {
+  if (!text) return false;
+  const englishRatio = (text.match(/[a-zA-Z]/g) || []).length / text.length;
+  const spanishChars = /[áéíóúñ¿¡]/i.test(text);
+  return englishRatio > 0.6 && !spanishChars;
+};
+
+// Traduce texto con DeepL
+const translateText = async (text) => {
+  if (!isEnglish(text)) return text;
+  try {
+    const res = await fetch("https://api-free.deepl.com/v2/translate", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `auth_key=${DEEPL_API_KEY}&text=${encodeURIComponent(text)}&target_lang=ES`,
+    });
+    const json = await res.json();
+    if (json.translations && json.translations.length > 0 && json.translations[0].text) {
+      return json.translations[0].text;
+    }
+    return text;
+  } catch (err) {
+    console.warn("Translation error", err");
+    return text;
+  }
+};
+
+// ------------------- Fetch APIs -------------------
+
+// GNews
+const fetchGNews = async () => {
+  const SOURCES = [`
+    `https://gnews.io/api/v4/search?q=apple&lang=en&country=us&max=10&apikey=${GNEWS_API_KEY}`,`
+    `https://gnews.io/api/v4/search?q=tesla&lang=en&country=us&max=10&apikey=${GNEWS_API_KEY}`,`
+    `https://gnews.io/api/v4/top-headlines?lang=en&country=us&max=10&topic=business&apikey=${GNEWS_API_KEY}`,`
+    `https://gnews.io/api/v4/top-headlines?lang=en&country=us&max=10&topic=technology&apikey=${GNEWS_API_KEY}`,`
+    `https://gnews.io/api/v4/top-headlines?lang=en&country=us&max=10&topic=world&apikey=${GNEWS_API_KEY}`,
+  ];
+
+  let articles = [];
+  for (const url of SOURCES) {
+    try {
+      const res = await fetch(url);
+      const json = await res.json();
+      if (json.articles) {
+        articles = articles.concat(json.articles);
+      }
+    } catch (err) {
+      console.warn("GNews fetch error", err");
+    }
+  }
+
+  return articles.map((a) => ({
+    title: a.title,
+    description: a.description,
+    url: a.url,
+    image: a.source && a.source.name ? a.source.name : a.image,
+    source: a.source && a.source.name ? a.source.name : "GNews",
+    publishedAt: a.publishedAt ? new Date(a.publishedAt) : new Date(),
+  }));
+};
+
+// MediaStack
+const fetchMediaStack = async () => {
+  try {`
+    const res = await fetch(`https://api.mediastack.com/v1/news?access_key=${MEDIASTACK_API_KEY}`);
+    const json = await res.json();
+    if (!json.data) return [];
+    return json.data.map((a) => ({
+      title: a.title,
+      description: a.description,
+      url: a.url,
+      image: a.image,
+      source: a.source || "MediaStack",
+      publishedAt: a.published_at ? new Date(a.published_at) : new Date(),
+    }));
+  } catch (err) {
+    console.warn("MediaStack fetch error", err");
+    return [];
+  }
+};
+
+// Apitube
+const fetchApitube = async () => {
+  try {`
+    const res = await fetch(`https://api.apitube.com/v1/videos?api_key=${APITUBE_API_KEY}`);
+    const json = await res.json();
+    if (!json.data) return [];
+    return json.data.map((v) => ({
+      title: v.title,
+      description: v.description,
+      url: v.url,
+      image: v.thumbnail,
+      source: "Apitube",
+      publishedAt: v.publishedAt ? new Date(v.publishedAt) : new Date(),
+    }));
+  } catch (err) {
+    console.warn("Apitube fetch error", err");
+    return [];
+  }
+};
+
+// SerpAPI
+const fetchSerpNews = async (query = "technology", limit = 10) => {
+  try {`
+    const url = `https://serpapi.com/search.json?engine=news&q=${encodeURIComponent(query)}&api_key=${SERP_API_KEY}&num=${limit}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    if (!json.news_results) return [];
+    return json.news_results.slice(0, limit).map((item) => ({
+      title: item.title,
+      description: item.snippet,
+      url: item.link,
+      image: item.thumbnail,
+      source: item.source || "SerpAPI",
+      publishedAt: item.date ? new Date(item.date) : new Date(),
+    }));
+  } catch (err) {
+    console.warn("SerpAPI fetch error", err");
+    return [];
+  }
+};
+
+// ------------------- Función principal -------------------
+
+export const syncNews = async () => {
+  try {
+    const [gNews, mediaStack, apitube, serpapi] = await Promise.all([
+      fetchGNews(),
+      fetchMediaStack(),
+      fetchApitube(),
+      fetchSerpNews("technology", 10),
+    ]);
+
+    const allArticles = [].concat(gNews, mediaStack, apitube, serpapi);
+
+    for (let i = 0; i < allArticles.length; i++) {
+      const article = allArticles[i];
+      if (!article.url || !article.title) continue;
+
+      const title = await translateText(article.title);
+      const description = article.description ? await translateText(article.description) : undefined;
+
+      await News.updateOne(
+        { url: article.url },
+        {
+          $set: {
+            title,
+            description,
+            url: article.url,
+            image: article.image,
+            source: article.source,
+            publishedAt: article.publishedAt,
+          },
+        },
+        { upsert: true }
+      );
+    }
+
+    console.log("✅ Sincronización completada");
+  } catch (err) {
+    console.error("syncNews error", err");
+  }
+};
+// ------------------- Broadcast Updates -------------------`

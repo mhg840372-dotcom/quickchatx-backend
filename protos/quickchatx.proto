@@ -1,0 +1,88 @@
+syntax = "proto3";
+
+package quickchatx;
+
+// ------------------------------
+// Modelos base
+// ------------------------------
+message Media {
+  string path = 1;          // Ruta relativa (/uploads/user/file.ext)
+  string url = 2;           // URL absoluta
+  string mime = 3;          // MIME type
+  string type = 4;          // image|video|gif|audio|file
+  int64 size = 5;           // bytes
+  string thumbUrl = 6;      // thumbnail absoluta
+  string thumbnailUrl = 7;  // alias thumb
+}
+
+message Post {
+  string id = 1;
+  string authorId = 2;
+  string authorUsername = 3;
+  string content = 4;
+  repeated Media media = 5;
+  repeated string topics = 6;
+  repeated string likes = 7;
+  int32 likesCount = 8;
+  int32 commentsCount = 9;
+  int64 createdAt = 10;
+  int64 updatedAt = 11;
+}
+
+// ------------------------------
+// Requests / Responses
+// ------------------------------
+message CreatePostRequest {
+  string authorId = 1;
+  string authorUsername = 2;
+  string content = 3;
+  repeated Media media = 4; // metadata de archivos ya almacenados
+}
+
+message CreatePostResponse { Post post = 1; }
+
+message UploadChunk {
+  string authorId = 1;
+  string authorUsername = 2;
+  string filename = 3;
+  string mime = 4;
+  bytes chunk = 5;
+  bool eof = 6;
+}
+
+message UploadResult {
+  string path = 1;
+  string url = 2;
+  string mime = 3;
+  string type = 4;
+  int64 size = 5;
+  string thumbUrl = 6;
+  string thumbnailUrl = 7;
+}
+
+message ListUserUploadsRequest {
+  string userId = 1;
+  int32 limit = 2;
+}
+
+message ListUserUploadsResponse { repeated UploadResult uploads = 1; }
+
+message FeedRequest {
+  string userId = 1;
+  int32 limit = 2;
+  int64 sinceMs = 3;
+  int64 beforeMs = 4;
+}
+
+message FeedResponse { repeated Post posts = 1; }
+
+// ------------------------------
+// Servicio principal
+// ------------------------------
+service QuickChatX {
+  rpc CreatePost(CreatePostRequest) returns (CreatePostResponse);
+  rpc UploadMedia(stream UploadChunk) returns (UploadResult);
+  rpc ListUserUploads(ListUserUploadsRequest) returns (ListUserUploadsResponse);
+  rpc Feed(FeedRequest) returns (FeedResponse);
+  rpc FeedStream(FeedRequest) returns (stream Post); // opcional real-time
+}

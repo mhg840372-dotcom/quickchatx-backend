@@ -1,0 +1,238 @@
+# ======================================================
+# 📘 QuickChatX v3.9 — YouTube API Documentation (Swagger)
+# ======================================================
+openapi: 3.1.0
+info:
+  title: QuickChatX YouTube API
+  version: "3.9"
+  description: |
+    API para gestionar y sincronizar videos de YouTube desde SerpApi, con soporte de cache en Redis.
+    Incluye sincronización automática, inserción manual y verificación del estado del servicio.
+
+servers:
+  - url: https://api.quickchatx.com/api
+    description: Servidor de producción
+
+tags:
+  - name: YouTube
+    description: Endpoints relacionados con sincronización y feed de videos
+
+paths:
+  /youtube:
+    get:
+      tags: [YouTube]
+      summary: Obtener lista de videos recientes
+      description: Retorna los videos más recientes desde la base de datos o cache Redis.
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+          description: Número máximo de videos a retornar.
+      responses:
+        "200":
+          description: Lista de videos obtenida correctamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  count:
+                    type: integer
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/YouTubeVideo"
+        "500":
+          description: Error interno del servidor.
+
+  /youtube/sync:
+    get:
+      tags: [YouTube]
+      summary: Sincronizar videos desde SerpApi
+      description: Realiza una solicitud a SerpApi para obtener videos nuevos y los guarda en MongoDB.
+      parameters:
+        - in: query
+          name: next_page_token
+          schema:
+            type: string
+          description: Token opcional para paginar resultados desde SerpApi.
+      responses:
+        "200":
+          description: Sincronización completada correctamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  nextPageToken:
+                    type: string
+        "500":
+          description: Error sincronizando videos.
+
+  /youtube/add:
+    post:
+      tags: [YouTube]
+      summary: Agregar un video manualmente
+      description: Inserta un video directamente en la base de datos (usado por administradores o scripts).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/YouTubeVideoInput"
+      responses:
+        "201":
+          description: Video agregado correctamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/YouTubeVideo"
+        "400":
+          description: Datos inválidos o faltantes.
+        "500":
+          description: Error al guardar el video.
+
+  /youtube/refresh:
+    get:
+      tags: [YouTube]
+      summary: Refrescar el cache de videos
+      description: Fuerza la actualización del cache Redis con los videos más recientes desde la base de datos.
+      responses:
+        "200":
+          description: Cache actualizado exitosamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  refreshedCount:
+                    type: integer
+                  message:
+                    type: string
+        "500":
+          description: Error actualizando el cache.
+
+  /youtube/status:
+    get:
+      tags: [YouTube]
+      summary: Verificar estado del servicio YouTube
+      description: Retorna información sobre el estado actual de la conexión con Redis, MongoDB y SerpApi.
+      responses:
+        "200":
+          description: Estado del servicio obtenido correctamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  status:
+                    type: object
+                    properties:
+                      redis:
+                        type: string
+                        example: connected
+                      mongodb:
+                        type: string
+                        example: connected
+                      lastSync:
+                        type: string
+                        format: date-time
+                      totalVideos:
+                        type: integer
+                        example: 125
+        "500":
+          description: Error obteniendo el estado.
+
+# ======================================================
+# 🧩 Esquemas
+# ======================================================
+components:
+  schemas:
+    YouTubeVideo:
+      type: object
+      properties:
+        videoId:
+          type: string
+          example: "abc123XYZ"
+        title:
+          type: string
+          example: "Cómo crear una API con Node.js y Express"
+        description:
+          type: string
+          example: "Tutorial completo para construir APIs modernas."
+        thumbnail:
+          type: string
+          example: "https://img.youtube.com/vi/abc123XYZ/hqdefault.jpg"
+        channelTitle:
+          type: string
+          example: "DevMaster"
+        channelLink:
+          type: string
+          example: "https://www.youtube.com/@devmaster"
+        publishedAt:
+          type: string
+          format: date-time
+          example: "2025-11-05T15:30:00Z"
+        url:
+          type: string
+          example: "https://www.youtube.com/watch?v=abc123XYZ"
+        views:
+          type: integer
+          example: 32000
+        length:
+          type: string
+          example: "12:45"
+
+    YouTubeVideoInput:
+      type: object
+      required:
+        - videoId
+        - title
+      properties:
+        videoId:
+          type: string
+          example: "xyz987ABC"
+        title:
+          type: string
+          example: "Nuevo lanzamiento de QuickChatX v3.9"
+        description:
+          type: string
+          example: "Resumen de las nuevas funciones integradas."
+        thumbnail:
+          type: string
+          example: "https://img.youtube.com/vi/xyz987ABC/maxresdefault.jpg"
+        channelTitle:
+          type: string
+          example: "QuickChatX Oficial"
+        channelLink:
+          type: string
+          example: "https://www.youtube.com/@quickchatx"
+        publishedAt:
+          type: string
+          format: date-time
+        url:
+          type: string
+          example: "https://www.youtube.com/watch?v=xyz987ABC"
+        views:
+          type: integer
+          example: 15000
+        length:
+          type: string
+          example: "08:12"
